@@ -14,6 +14,10 @@ describe("Best", function () {
     const ERC20 = await ethers.getContractFactory("TestCurrency");
     currency = await ERC20.deploy(ethers.utils.parseEther("1000.0"));
     await currency.deployed();
+
+    const ERC20_2 = await ethers.getContractFactory("TestCurrency");
+    currency2 = await ERC20_2.deploy(ethers.utils.parseEther("1000.0"));
+    await currency2.deployed();
   })
   it("Deploy Best NFT", async function () {
     const Best = await ethers.getContractFactory("Best");
@@ -54,12 +58,19 @@ describe("Best", function () {
     expect(await best.getApproved(0)).to.equal(accounts[1].address);
     // await expect(await best.balanceOf(accounts[1].address)).to.equal(1);
   });
+  it("Can't pay with other ERC20 tokens", async function () {
+    currency2.transfer(accounts[3].address, ethers.utils.parseEther("2.0"))
+    expect(await currency.balanceOf(accounts[3].address)).to.equal(ethers.constants.AddressZero);
+    expect(await currency2.balanceOf(accounts[3].address)).to.equal(ethers.utils.parseEther("2.0"));
+    currency2.connect(accounts[3]).approve(best.address, ethers.utils.parseEther("2.0"));
+    await expect(best.connect(accounts[3]).mint()).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+  });
+  
   it("Test max supply limit", async function () {
     currency.approve(best.address, ethers.utils.parseEther("500.0"))
     await best.mint();
     await best.mint(); // 4th
     await best.mint(); // 5th
     await expect(best.mint()).to.be.revertedWith("Max supply reached");
-    // await expect(await best.balanceOf(accounts[1].address)).to.equal(1);
   });
 });
