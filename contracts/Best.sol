@@ -12,39 +12,41 @@ contract Best is ERC721, ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIdCounter;
-    uint256 private _totalSupply;
+    uint256 private _maxSupply;
     uint256 private _price;
     IERC20 private _currency;
-    bool private salesStarted;
+    bool private _salesStarted;
     string private constant URI = "https://google.com/";
 
     constructor(IERC20 currencyToken, uint256 price, uint256 maxSupply) ERC721("Best", "BST") {
         _currency = currencyToken;
         _price = price;
-        _totalSupply = maxSupply;
+        _maxSupply = maxSupply;
     }
 
     function _baseURI() internal pure override returns (string memory) {
         return "";
     }
 
-
-    function safeMint(address to) public onlyOwner {
+    function safeMint(address to) private {
         _safeMint(to, _tokenIdCounter.current());
         _setTokenURI(_tokenIdCounter.current(), URI);
         _tokenIdCounter.increment();
     }
 
     function startSales() public onlyOwner {
-        salesStarted = true;
+        _salesStarted = true;
+    }
+
+    function totalSupply() public view  returns (uint256) {
+        return _tokenIdCounter.current();
     }
     
-    // user sends money and gets new NFT in return
+    // user approve on their side and then we can take their tokens and give new NFT in return
     function mint() external {
-        require(salesStarted, "Sales not started");
-        require(_tokenIdCounter.current() <= _totalSupply, "Max supply reached");
-        // require(_currency.balanceOf(msg.sender) >= _price, "Low balance");
-        _currency.transfer(address(this), _price);
+        require(_salesStarted, "Sales not started");
+        require(_tokenIdCounter.current() < _maxSupply, "Max supply reached");
+        _currency.transferFrom(msg.sender, address(this), _price);
         safeMint(msg.sender);
     }
 

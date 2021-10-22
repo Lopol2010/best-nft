@@ -20,23 +20,46 @@ describe("Best", function () {
     best = await Best.deploy(
       currency.address, 
       ethers.utils.parseEther("1.0"),
-      100
+      5
     );
     await best.deployed();
   })
+  it("Can't mint when sales not started", async function () {
+    await currency.approve(best.address, ethers.utils.parseEther("2.0"));
+    // here await before 'expect' because 'revertedWith' is async
+    await expect(best.connect(accounts[0]).mint()).to.be.revertedWith('Sales not started');
+  });
   it("Token URI should be predefined", async function () {
-    best.safeMint(accounts[0].address);
+    await best.startSales();
+    await currency.approve(best.address, ethers.utils.parseEther("2.0"))
+    await best.mint();
+    expect(await best.balanceOf(accounts[0].address)).to.equal(1);
     expect(await best.tokenURI(0)).to.equal("https://google.com/");
   });
-  it("Should revert on mint when sales not started", async function () {
-    await expect(best.mint()).to.be.revertedWith('Sales not started');
+  it("Can mint when sales started", async function () {
+    await currency.transfer(accounts[1].address, ethers.utils.parseEther("2.0"));
+    // currency.transfer(best.address, ethers.utils.parseEther("2.0"));
+    await currency.connect(accounts[1]).approve(best.address, ethers.utils.parseEther("2.0"));
+    expect(await currency.balanceOf(accounts[1].address)).to.equal(ethers.utils.parseEther("2.0"));
+    await best.connect(accounts[1]).mint();
+    expect(await best.balanceOf(accounts[1].address)).to.equal(1);
+    expect(await currency.balanceOf(accounts[1].address)).to.equal(ethers.utils.parseEther("1.0"));
+    // await expect(await best.balanceOf(accounts[1].address)).to.equal(1);
   });
-  it("Should revert if not enough payed for NFT", async function () {
-    best.startSales();
-    await expect(best.connect(accounts[1]).mint()).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+  it("Owners can delegate their NFTs", async function () {
+    expect(await best.getApproved(0)).to.equal(ethers.constants.AddressZero);
+    await best.delegate(accounts[1].address, "0");
+    expect(await best.balanceOf(accounts[1].address)).to.equal(1);
+    expect(await best.balanceOf(accounts[0].address)).to.equal(1);
+    expect(await best.getApproved(0)).to.equal(accounts[1].address);
+    // await expect(await best.balanceOf(accounts[1].address)).to.equal(1);
   });
-  it("Mint NFT", async function () {
-    currency.transfer(accounts[0].address, ethers.utils.parseEther("2.0"))
-    await expect(best.connect(accounts[1]).mint()).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+  it("Test max supply limit", async function () {
+    currency.approve(best.address, ethers.utils.parseEther("500.0"))
+    await best.mint();
+    await best.mint(); // 4th
+    await best.mint(); // 5th
+    await expect(best.mint()).to.be.revertedWith("Max supply reached");
+    // await expect(await best.balanceOf(accounts[1].address)).to.equal(1);
   });
 });
