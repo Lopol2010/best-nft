@@ -16,6 +16,7 @@ contract Best is ERC721, ERC721URIStorage, Ownable {
     uint256 private _price;
     IERC20 private _currency;
     bool private salesStarted;
+    string private constant uri = "https://google.com/";
 
     constructor(IERC20 currencyToken, uint256 price, uint256 maxSupply) ERC721("Best", "BST") {
         _currency = currencyToken;
@@ -24,26 +25,26 @@ contract Best is ERC721, ERC721URIStorage, Ownable {
     }
 
     function _baseURI() internal pure override returns (string memory) {
-        return "https://google.com/";
+        return "";
     }
+
 
     function safeMint(address to) public onlyOwner {
         _safeMint(to, _tokenIdCounter.current());
+        _setTokenURI(_tokenIdCounter.current(), uri);
         _tokenIdCounter.increment();
     }
 
     function startSales() public onlyOwner {
         salesStarted = true;
     }
-
-    // creates a new NFT and sends currency from buyer to owner of the contract
-    function buy() public {
-        require(salesStarted, "Sales didn't started");
-        require(_tokenIdCounter.current() <= _totalSupply, "Max supply reached");
-        require(_currency.balanceOf(msg.sender) >= _price, "Low balance");
     
-        _currency.approve(address(this), _price);
-        _currency.transferFrom(msg.sender, owner(), _price);
+    // user sends money and gets new NFT in return
+    function mint() external payable {
+        require(salesStarted, "Sales not started");
+        require(_tokenIdCounter.current() <= _totalSupply, "Max supply reached");
+        require(msg.value >= _price, "Low balance");
+
         safeMint(msg.sender);
     }
 
