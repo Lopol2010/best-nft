@@ -59,15 +59,15 @@ describe("Best", function () {
     // await expect(await best.balanceOf(accounts[1].address)).to.equal(1);
   });
   it("Can't pay with other ERC20 tokens", async function () {
-    currency2.transfer(accounts[3].address, ethers.utils.parseEther("2.0"))
+    await currency2.transfer(accounts[3].address, ethers.utils.parseEther("2.0"))
     expect(await currency.balanceOf(accounts[3].address)).to.equal(ethers.constants.AddressZero);
     expect(await currency2.balanceOf(accounts[3].address)).to.equal(ethers.utils.parseEther("2.0"));
-    currency2.connect(accounts[3]).approve(best.address, ethers.utils.parseEther("2.0"));
+    await currency2.connect(accounts[3]).approve(best.address, ethers.utils.parseEther("2.0"));
     await expect(best.connect(accounts[3]).mint()).to.be.revertedWith('ERC20: transfer amount exceeds balance');
   });
   
   it("Test max supply limit", async function () {
-    currency.approve(best.address, ethers.utils.parseEther("500.0"))
+    await currency.approve(best.address, ethers.utils.parseEther("500.0"))
     await best.mint();
     await best.mint(); // 4th
     await best.mint(); // 5th

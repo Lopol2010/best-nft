@@ -20,6 +20,9 @@ contract Best is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     string private constant URI = "https://google.com/";
 
     mapping(address => uint256) private _balances;
+    mapping(uint256 => uint256) public delegationTimestamp;
+    mapping(address => mapping(uint256 => address)) public delegates;
+    uint256 public totalDelegators;
 
     constructor(IERC20 _currencyToken, uint256 _price, uint256 _maxSupply) ERC721("Best", "BST") {
         currency = _currencyToken;
@@ -43,6 +46,21 @@ contract Best is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         return "";
     }
 
+    function exists(uint256 tokenId) public view returns (bool) {
+        return _exists(tokenId);
+    }
+
+    function delegate(address _delegatee, uint256 tokenId) public {
+        require(msg.sender != address(0));
+        require(delegates[msg.sender][tokenId] != _delegatee);
+        require(exists(tokenId));
+
+        delegates[msg.sender][tokenId] = _delegatee;
+        if(delegationTimestamp[tokenId] == 0)
+            totalDelegators += 1;
+        delegationTimestamp[tokenId] = block.timestamp;
+    }
+
     function getTotalSupply() external view returns (uint256) {
         return totalSupply();
     }
@@ -51,29 +69,19 @@ contract Best is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         return totalSupply();
     }
 
-    function safeMint(address to) private {
-        _safeMint(to, _tokenIdCounter.current());
-        _setTokenURI(_tokenIdCounter.current(), URI);
-        _tokenIdCounter.increment();
-    }
-
     function startSales() public onlyOwner {
         salesStarted = true;
     }
-
 
     // user approve on their side and then we can take their tokens and give new NFT in return
     function mint() external {
         require(salesStarted, "Sales not started");
         require(totalSupply() < maxSupply, "Max supply reached");
         currency.transferFrom(msg.sender, address(this), price);
-        safeMint(msg.sender);
-
-    }
-
-    //delegate token
-    function delegate(address to, uint256 tokenId) public {
-        approve(to, tokenId);
+        
+        _safeMint(msg.sender, _tokenIdCounter.current());
+        _setTokenURI(_tokenIdCounter.current(), URI);
+        _tokenIdCounter.increment();
     }
 
     // The following functions are overrides required by Solidity.
