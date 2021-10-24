@@ -9,11 +9,12 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract Best is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
+contract Best is ERC721, ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIdCounter;
     uint256 private maxSupply;
+    uint256 private totalSupply;
     uint256 private price;
     IERC20 private currency;
     bool private salesStarted;
@@ -28,18 +29,6 @@ contract Best is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         currency = _currencyToken;
         price = _price;
         maxSupply = _maxSupply;
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721Enumerable) returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
-
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal virtual override (ERC721, ERC721Enumerable) {
-        super._beforeTokenTransfer(from, to, tokenId);
     }
 
     function _baseURI() internal pure override returns (string memory) {
@@ -61,14 +50,6 @@ contract Best is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
         delegationTimestamp[tokenId] = block.timestamp;
     }
 
-    function getTotalSupply() external view returns (uint256) {
-        return totalSupply();
-    }
-
-    function getUserTotalNFT() external view returns (uint256) {
-        return totalSupply();
-    }
-
     function startSales() public onlyOwner {
         salesStarted = true;
     }
@@ -76,18 +57,20 @@ contract Best is ERC721, ERC721URIStorage, ERC721Enumerable, Ownable {
     // user approve on their side and then we can take their tokens and give new NFT in return
     function mint() external {
         require(salesStarted, "Sales not started");
-        require(totalSupply() < maxSupply, "Max supply reached");
+        require(totalSupply < maxSupply, "Max supply reached");
         currency.transferFrom(msg.sender, address(this), price);
-        
+
         _safeMint(msg.sender, _tokenIdCounter.current());
         _setTokenURI(_tokenIdCounter.current(), URI);
         _tokenIdCounter.increment();
+        totalSupply += 1;
     }
 
     // The following functions are overrides required by Solidity.
 
     function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
         super._burn(tokenId);
+        totalSupply -= 1;
     }
 
     function tokenURI(uint256 tokenId)
