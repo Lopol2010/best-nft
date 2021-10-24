@@ -20,15 +20,26 @@ contract Best is ERC721, ERC721URIStorage, Ownable {
     bool private salesStarted;
     string private constant URI = "https://google.com/";
 
-    mapping(address => uint256) private _balances;
-    mapping(uint256 => uint256) public delegationTimestamp;
-    mapping(address => mapping(uint256 => address)) public delegates;
-    uint256 public totalDelegators;
+    mapping(uint256 => uint256) private delegationTimestamp;
+    mapping(address => mapping(uint256 => address)) private delegates;
+    uint256 private totalDelegators;
 
     constructor(IERC20 _currencyToken, uint256 _price, uint256 _maxSupply) ERC721("Best", "BST") {
         currency = _currencyToken;
         price = _price;
         maxSupply = _maxSupply;
+    }
+
+    function getTotalDelegators() public view returns (uint256) {
+        return totalDelegators;
+    }
+
+    function getDelegationTimestamp(uint256 _tokenId) public view returns (uint256) {
+        return delegationTimestamp[_tokenId];
+    }
+
+    function getDelegatee(address _delegate, uint256 _tokenId) public view returns (address) {
+        return delegates[_delegate][_tokenId];
     }
 
     function _baseURI() internal pure override returns (string memory) {
@@ -41,6 +52,7 @@ contract Best is ERC721, ERC721URIStorage, Ownable {
 
     function delegate(address _delegatee, uint256 tokenId) public {
         require(msg.sender != address(0));
+        require(msg.sender == ownerOf(tokenId));
         require(delegates[msg.sender][tokenId] != _delegatee);
         require(exists(tokenId));
 
@@ -70,7 +82,11 @@ contract Best is ERC721, ERC721URIStorage, Ownable {
 
     function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
         super._burn(tokenId);
+
         totalSupply -= 1;
+        totalDelegators -= 1;
+        delegates[msg.sender][tokenId] = address(0);
+        delegationTimestamp[tokenId] = 0;
     }
 
     function tokenURI(uint256 tokenId)

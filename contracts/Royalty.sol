@@ -59,7 +59,7 @@ contract Royalty {
 
     // amount is the total sum that will be divided into 'per nft' pieces
     function getUnitPayment(uint256 _amount) public view returns (uint256) {
-        uint256 totalDelegators = best.totalDelegators();
+        uint256 totalDelegators = best.getTotalDelegators();
         // console.log("w%s", totalDelegators);
         if(totalDelegators > 0)
             return _amount / totalDelegators;
@@ -80,9 +80,9 @@ contract Royalty {
         for(uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
             require(best.ownerOf(tokenId) == msg.sender, "Not owner");
-            require(best.delegates(msg.sender, tokenId) != address(0), "Not delegated");
+            require(best.getDelegatee(msg.sender, tokenId) != address(0), "Not delegated");
 
-            uint256 delegationTimestamp = best.delegationTimestamp(tokenId);
+            uint256 delegationTimestamp = best.getDelegationTimestamp(tokenId);
             // console.log("%s %s %s", block.timestamp, delegationTimestamp, block.timestamp - delegationTimestamp);
             if(delegationTimestamp > 0) {
                 // iterate over cycles

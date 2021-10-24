@@ -51,12 +51,9 @@ describe("Best", function () {
     // await expect(await best.balanceOf(accounts[1].address)).to.equal(1);
   });
   it("Owners can delegate their NFTs", async function () {
-    expect(await best.getApproved(0)).to.equal(ethers.constants.AddressZero);
-    await best.delegate(accounts[1].address, "0");
-    expect(await best.balanceOf(accounts[1].address)).to.equal(1);
-    expect(await best.balanceOf(accounts[0].address)).to.equal(1);
-    expect(await best.getApproved(0)).to.equal(accounts[1].address);
-    // await expect(await best.balanceOf(accounts[1].address)).to.equal(1);
+    expect(await best.getDelegatee(accounts[0].address, 0)).to.equal(ethers.constants.AddressZero);
+    await best.delegate(accounts[1].address, 0);
+    expect(await best.getDelegatee(accounts[0].address, 0)).to.equal(accounts[1].address);
   });
   it("Can't pay with other ERC20 tokens", async function () {
     await currency2.transfer(accounts[3].address, ethers.utils.parseEther("2.0"))
