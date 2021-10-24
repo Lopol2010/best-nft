@@ -12,35 +12,43 @@ contract Royalty {
     address payable private bank;
     Best private best;
     uint256 private bankPercent;
-    uint256 private lastDepositTimestamp;
+    uint256 private minEthToStartCycle;
     bool private lockClaim;
+    uint256 private CYCLE_DURATION = 30 days;
 
     struct Cycle {
         uint256 startTimestamp;
         uint256 perTokenReward;
+        uint256 balance;
         mapping(uint256 => bool) isClaimed;
     }
 
     mapping(uint256 => Cycle) private cycles;
 
-    constructor(Best _best, address payable _bank, uint256 _bankPercent) {
+    constructor(Best _best, uint256 _minEthToStartCycle, address payable _bank, uint256 _bankPercent) {
         bank = _bank;
         best = _best;
         bankPercent = _bankPercent;
+        minEthToStartCycle = _minEthToStartCycle;
+        cycles[counter.current()].startTimestamp = block.timestamp;
     }
 
     receive() external payable {
-        require(block.timestamp >= lastDepositTimestamp + 4 weeks, "Cant deposit twice a month");
-        lastDepositTimestamp = block.timestamp;
-        if(msg.value > 0) {
-            uint256 bankPart = (msg.value * bankPercent / 10000);
-            if(bankPart > 0) {
-                (bool success, ) = bank.call{value: msg.value * bankPercent / 10000}("");
-                require(success, "Re-route to bank failed");
-            }
-            cycles[counter.current()].perTokenReward = getUnitPayment(msg.value - bankPart);
-            cycles[counter.current()].startTimestamp = block.timestamp;
-            counter.increment();
+        require(msg.value > 0, "Nothing to receive");
+
+        uint256 bankPart = (msg.value * bankPercent / 10000);
+        if(bankPart > 0) {
+            (bool success, ) = bank.call{value: bankPart}("");
+            require(success, "Re-route to bank failed");
+        }
+
+        cycles[counter.current()].balance += msg.value - bankPart;
+        if(cycles[counter.current()].startTimestamp + CYCLE_DURATION < block.timestamp) {
+            if(cycles[counter.current()].balance >= minEthToStartCycle) {
+                cycles[counter.current()].perTokenReward = getUnitPayment(cycles[counter.current()].balance);
+                counter.increment();
+                cycles[counter.current()].startTimestamp = block.timestamp;
+            } 
         }
     }
 
@@ -56,34 +64,41 @@ contract Royalty {
     // amount is the total sum that will be divided into 'per nft' pieces
     function getUnitPayment(uint256 _amount) public view returns (uint256) {
         uint256 totalDelegators = best.getTotalDelegators();
-        if(totalDelegators > 0)
-            return _amount / totalDelegators;
-        return 0;
+        return (totalDelegators > 0) ? (_amount / totalDelegators) : 0;
     }
 
     function claim(uint256[] calldata tokenIds) external payable {
         require(!lockClaim, "Reentrant call!");
         lockClaim = true;
         require(address(this).balance > 0, "No royalty");
-        require(best.balanceOf(msg.sender) > 0, "Not own anything");
+        require(best.balanceOf(msg.sender) > 0, "You dont have NFTs");
+
+        if(cycles[counter.current()].startTimestamp + CYCLE_DURATION < block.timestamp) {
+            if(cycles[counter.current()].balance >= minEthToStartCycle) {
+                cycles[counter.current()].perTokenReward = getUnitPayment(cycles[counter.current()].balance);
+                counter.increment();
+                cycles[counter.current()].startTimestamp = block.timestamp;
+            }
+        }
         require(counter.current() > 0, "Too soon");
-        // require(lastDepositTimestamp + 4 weeks < block.timestamp, "Royalty deposit is too young");
 
         uint256 reward;
         // iterate over tokens that user passed
         for(uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
             require(best.ownerOf(tokenId) == msg.sender, "Not owner");
-            require(best.getDelegatee(msg.sender, tokenId) != address(0), "Not delegated");
+            require(best.getDelegatee(msg.sender, tokenId) != address(0), "NFT should be delegated");
 
             uint256 delegationTimestamp = best.getDelegationTimestamp(tokenId);
             if(delegationTimestamp > 0) {
                 // iterate over cycles
                 for(uint256 o = 0; o < counter.current(); o++) {
-                    if(cycles[o].isClaimed[tokenId] == false) {
-                        if(delegationTimestamp + 4 weeks <= cycles[o].startTimestamp) {
-                            reward += cycles[o].perTokenReward;
-                            cycles[o].isClaimed[tokenId] = true;
+                    if(cycles[o].perTokenReward > 0) { // reward is only set when new cycle starts, so with this check we will skip current cycle
+                        if(cycles[o].isClaimed[tokenId] == false) {
+                            if(delegationTimestamp < cycles[o].startTimestamp) {
+                                reward += cycles[o].perTokenReward;
+                                cycles[o].isClaimed[tokenId] = true;
+                            }
                         }
                     }
                 }
