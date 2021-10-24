@@ -69,7 +69,6 @@ describe("Royalty", function () {
     await expect(royalty.claim([0])).to.be.revertedWith("Too soon");
     await provider.send("evm_increaseTime", [CYCLE_DURATION]); // here first cycle is ended, and new one starts
     await provider.send("evm_mine");
-    console.log(format(await provider.getBalance(royalty.address)))
     await expect(royalty.claim([0])).to.be.revertedWith("NFT should be delegated");
     await best.delegate(accounts[0].address, 0); // delegate after first cycle start, so cant claim reward for that cycle
     await expect(royalty.claim([0])).to.be.revertedWith("Nothing to claim"); 
@@ -92,23 +91,23 @@ describe("Royalty", function () {
     await expect(royalty.claim([0])).to.be.not.reverted; // delegated before second cycle started and claim when third cycle started, (so claimed for second cycle)
     expect(await accounts[0].getBalance()).to.be.gt(parse("9997.0")); 
   })
-  it("Can't claim claimed", async function () {
-    await expect(royalty.claim([0])).to.be.revertedWith("Nothing to claim");
-  })
-  it("Multiple claimers", async function () {
-    await currency.transfer(accounts[5].address, parse("100.0"));
-    await currency.transfer(accounts[4].address, parse("100.0"));
-    await accounts[7].sendTransaction({
-        from: accounts[7].address,
-        to: royalty.address,
-        value: parse("100.0")
-    });
-    await currency.connect(accounts[4]).approve(best.address, parse("10.0"));
-    await best.connect(accounts[4]).mint();
-    await currency.connect(accounts[5]).approve(best.address, parse("10.0"));
-    await best.connect(accounts[5]).mint();
+  // it("Can't claim claimed", async function () {
+  //   await expect(royalty.claim([0])).to.be.revertedWith("Nothing to claim");
+  // })
+  // it("Multiple claimers", async function () {
+  //   await currency.transfer(accounts[5].address, parse("100.0"));
+  //   await currency.transfer(accounts[4].address, parse("100.0"));
+  //   await accounts[7].sendTransaction({
+  //       from: accounts[7].address,
+  //       to: royalty.address,
+  //       value: parse("100.0")
+  //   });
+  //   await currency.connect(accounts[4]).approve(best.address, parse("10.0"));
+  //   await best.connect(accounts[4]).mint();
+  //   await currency.connect(accounts[5]).approve(best.address, parse("10.0"));
+  //   await best.connect(accounts[5]).mint();
 
-    await expect(royalty.claim([0])).to.be.reverted;
+  //   await expect(royalty.claim([0])).to.be.reverted;
     // await expect(royalty.connect(accounts[5]).claim([3])).to.be.revertedWith("NFT should be delegated");
 
     // await best.connect(accounts[4]).delegate(best.address, 2); //dont care about delegatee address
@@ -133,5 +132,5 @@ describe("Royalty", function () {
     // expect(await accounts[5].getBalance()).to.be.gt(parse("10000.2"))
     // expect(await accounts[0].getBalance()).to.be.gt(parse("10090"))
 
-  })
+  // })
 });
