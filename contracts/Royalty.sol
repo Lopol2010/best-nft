@@ -21,10 +21,7 @@ contract Royalty {
         mapping(uint256 => bool) isClaimed;
     }
 
-    // mapping(address => UserData) private users;
     mapping(uint256 => Cycle) private cycles;
-
-    // mapping(uint256 => mapping(uint256 => bool)) private claimed;
 
     constructor(Best _best, address payable _bank, uint256 _bankPercent) {
         bank = _bank;
@@ -43,13 +40,12 @@ contract Royalty {
             }
             cycles[counter.current()].perTokenReward = getUnitPayment(msg.value - bankPart);
             cycles[counter.current()].startTimestamp = block.timestamp;
-            // console.log("ptr %s blnc %s dlgs", cycles[counter.current()].perTokenReward / 10**18, msg.value / 10**18, best.totalDelegators());
             counter.increment();
         }
     }
 
     function setBank(address payable _bank) public {
-        require(_bank != address(0));
+        require(_bank != address(0), "Must not be zero-address");
         bank = _bank;
     }
 
@@ -60,7 +56,6 @@ contract Royalty {
     // amount is the total sum that will be divided into 'per nft' pieces
     function getUnitPayment(uint256 _amount) public view returns (uint256) {
         uint256 totalDelegators = best.getTotalDelegators();
-        // console.log("w%s", totalDelegators);
         if(totalDelegators > 0)
             return _amount / totalDelegators;
         return 0;
@@ -75,7 +70,6 @@ contract Royalty {
         // require(lastDepositTimestamp + 4 weeks < block.timestamp, "Royalty deposit is too young");
 
         uint256 reward;
-        // console.log("init: r%s ra%s", reward / 10**18, (address(this).balance) / 10**18);
         // iterate over tokens that user passed
         for(uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
@@ -83,14 +77,11 @@ contract Royalty {
             require(best.getDelegatee(msg.sender, tokenId) != address(0), "Not delegated");
 
             uint256 delegationTimestamp = best.getDelegationTimestamp(tokenId);
-            // console.log("%s %s %s", block.timestamp, delegationTimestamp, block.timestamp - delegationTimestamp);
             if(delegationTimestamp > 0) {
                 // iterate over cycles
                 for(uint256 o = 0; o < counter.current(); o++) {
                     if(cycles[o].isClaimed[tokenId] == false) {
                         if(delegationTimestamp + 4 weeks <= cycles[o].startTimestamp) {
-                            // console.log("cycle: %s %s %s", o, tokenId, delegationTimestamp);
-                            console.log("cycle: %s %s %s", o, cycles[o].startTimestamp, delegationTimestamp + 4 weeks);
                             reward += cycles[o].perTokenReward;
                             cycles[o].isClaimed[tokenId] = true;
                         }
@@ -102,7 +93,6 @@ contract Royalty {
         require(reward > 0, "Nothing to claim");
 
         (bool success, ) = payable(msg.sender).call{value: reward}("");  
-        // console.log("%s r%s ra%s", success, reward / 10**18, (address(this).balance) / 10**18);
         require(success, "Transfer failed");
         lockClaim = false;
     }

@@ -51,10 +51,10 @@ contract Best is ERC721, ERC721URIStorage, Ownable {
     }
 
     function delegate(address _delegatee, uint256 tokenId) public {
-        require(msg.sender != address(0));
-        require(msg.sender == ownerOf(tokenId));
-        require(delegates[msg.sender][tokenId] != _delegatee);
-        require(exists(tokenId));
+        require(msg.sender != address(0), "Delegate to address-zero");
+        require(msg.sender == ownerOf(tokenId), "Not owner");
+        require(delegates[msg.sender][tokenId] != _delegatee, "The same delegatee");
+        require(exists(tokenId), "Token must exists");
 
         delegates[msg.sender][tokenId] = _delegatee;
         if(delegationTimestamp[tokenId] == 0)
