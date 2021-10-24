@@ -47,7 +47,7 @@ describe("Royalty", function () {
         to: royalty.address,
         value: ethers.utils.parseEther("1.0")
     });
-    expect(await bank.getBalance()).to.equal(ethers.utils.parseEther("10000.1"))
+    expect(await bank.getBalance()).to.be.gt(ethers.utils.parseEther("10000.09"))
     expect(await provider.getBalance(royalty.address)).to.equal(ethers.utils.parseEther("0.9"))
   })
   it("Mint some NFTs", async function () {
